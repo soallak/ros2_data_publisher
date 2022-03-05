@@ -3,6 +3,7 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include <algorithm>
+#include <array>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/directory.hpp>
 #include <boost/filesystem/path.hpp>
@@ -134,6 +135,11 @@ void EurocPublisher::LoadImages() {
     lk.lock();
     right_files_idx_ +=
         load_images(right_img_q_, right_files_, right_files_idx_);
+
+    if (left_files_idx_ == left_files_.size() &&
+        right_files_idx_ == right_files_.size()) {
+      RCLCPP_INFO_STREAM(get_logger(), "All images have been loaded");
+    }
   }
 }
 

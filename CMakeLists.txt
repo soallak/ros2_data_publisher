@@ -15,6 +15,7 @@ find_package(rclcpp REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(cv_bridge REQUIRED)
+#find_package(image_transport REQUIRED)
 
 set(${PROJECT_NAME}_src 
   src/data_publisher.cpp
@@ -30,8 +31,10 @@ target_include_directories(${PROJECT_NAME}
     ${OpenCV_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
     ${sensor_msgs_INCLUDE_DIRS}
-
+    ${cv_bridge_INCLUDE_DIRS}
+    ##${image_transport_INCLUDE_DIRS}
 )
+
 
 target_link_libraries(${PROJECT_NAME} 
   PUBLIC
@@ -41,6 +44,7 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     ${Boost_LIBRARIES}
     ${cv_bridge_LIBRARIES}
+    #${image_transport_LIBRARIES}
 )
 
 add_executable(data_publisher_node src/data_publisher_node.cpp)

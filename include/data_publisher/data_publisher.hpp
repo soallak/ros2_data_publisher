@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
@@ -18,7 +17,7 @@ class IDataPublisher : public rclcpp::Node {
   IDataPublisher(std::string node_name) : rclcpp::Node(node_name) {}
 };
 
-enum class DatasetType : std::uint8_t { EUROC = 0, TUM };
+enum class DatasetType : std::uint8_t { EUROC = 0, TUM = 1 };
 
 std::unique_ptr<IDataPublisher> CreateDataPublisher(DatasetType type,
                                                     std::string path);
