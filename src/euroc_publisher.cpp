@@ -9,6 +9,7 @@
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <opencv2/imgcodecs.hpp>
 #include <queue>
@@ -21,25 +22,26 @@
 namespace simulation {
 
 EurocPublisher::EurocPublisher(std::string path)
-    : IDataPublisher("euroc"), path_(path), paused_{true} {
+    : path_(path),
+      paused_(true),
+      node_(std::make_shared<rclcpp::Node>("euroc")),
+      it_(node_) {
   Init();
 }
 
 EurocPublisher::~EurocPublisher() { Stop(); }
 
 void EurocPublisher::Start() {
-  pub_left_ = this->create_publisher<sensor_msgs::msg::Image>("left/image_raw",
-                                                              q_size_);
-  pub_right_ = this->create_publisher<sensor_msgs::msg::Image>(
-      "right/image_raw", q_size_);
+  pub_left_ = it_.advertise("left/image_raw", q_size_);
+  pub_right_ = it_.advertise("right/image_raw", q_size_);
   std::chrono::milliseconds period(period_ms_);
   std::function<void()> publish_callback =
       std::bind(&EurocPublisher::Publish, this);
-  pub_timer_ = this->create_wall_timer(period, publish_callback);
+  pub_timer_ = node_->create_wall_timer(period, publish_callback);
 
   std::function<void()> load_img_callback =
       std::bind(&EurocPublisher::LoadImages, this);
-  load_img_timer_ = this->create_wall_timer(period / 2, load_img_callback);
+  load_img_timer_ = node_->create_wall_timer(period / 2, load_img_callback);
   paused_ = false;
 }
 
@@ -47,8 +49,8 @@ void EurocPublisher::Stop() {
   paused_ = true;
   pub_timer_.reset();
   load_img_timer_.reset();
-  pub_left_.reset();
-  pub_right_.reset();
+  pub_left_.shutdown();
+  pub_right_.shutdown();
   std::lock_guard<std::mutex> lk(img_q_mtx_);
   left_files_.clear();
   right_files_.clear();
@@ -63,6 +65,8 @@ void EurocPublisher::Restart() {
   Init();
   Start();
 }
+
+std::shared_ptr<rclcpp::Node> EurocPublisher::GetNode() { return node_; }
 
 void EurocPublisher::Init() {
   namespace fs = boost::filesystem;
@@ -94,7 +98,7 @@ void EurocPublisher::Init() {
   std::sort(left_files_.begin(), left_files_.end(), compare);
   std::sort(right_files_.begin(), right_files_.end(), compare);
   if (left_files_.size() != right_files_.size()) {
-    RCLCPP_WARN_STREAM(get_logger(),
+    RCLCPP_WARN_STREAM(node_->get_logger(),
                        "Amount of left images "
                            << left_files_.size()
                            << " is different than the amount of right images "
@@ -111,7 +115,7 @@ void EurocPublisher::LoadImages() {
 
   std::unique_lock<std::mutex> lk(img_q_mtx_);
   if (left_img_q_.size() < q_size_ / 2 && right_img_q_.size() < q_size_ / 2) {
-    RCLCPP_DEBUG_STREAM(get_logger(), "Loading images from disk");
+    RCLCPP_DEBUG_STREAM(node_->get_logger(), "Loading images from disk");
     auto load_images = [&lk, q_size = q_size_](
                            std::queue<Image>& q,
                            std::vector<boost::filesystem::path> const& files,
@@ -138,14 +142,14 @@ void EurocPublisher::LoadImages() {
 
     if (left_files_idx_ == left_files_.size() &&
         right_files_idx_ == right_files_.size()) {
-      RCLCPP_INFO_STREAM(get_logger(), "All images have been loaded");
+      RCLCPP_INFO_STREAM(node_->get_logger(), "All images have been loaded");
     }
   }
 }
 
 void EurocPublisher::Publish() {
   if (paused_) return;
-  RCLCPP_DEBUG_STREAM(get_logger(), "Publishing");
+  RCLCPP_DEBUG_STREAM(node_->get_logger(), "Publishing");
   auto front_and_pop = [](std::queue<Image>& q) -> Image {
     if (!q.empty()) {
       auto image = q.front();
@@ -164,11 +168,11 @@ void EurocPublisher::Publish() {
     right_img = front_and_pop(right_img_q_);
   }
 
-  auto publish = [this](Image& img, ImagePublisherPtr& pub) {
-    if (!img.data.empty() && pub->get_subscription_count()) {
-      RCLCPP_DEBUG_STREAM(get_logger(),
-                          "Publishing topic: " << pub->get_topic_name() << "to "
-                                               << pub->get_subscription_count()
+  auto publish = [this](Image& img, ImagePublisher& pub) {
+    if (!img.data.empty() && pub.getNumSubscribers()) {
+      RCLCPP_DEBUG_STREAM(node_->get_logger(),
+                          "Publishing topic: " << pub.getTopic() << "to "
+                                               << pub.getNumSubscribers()
                                                << "subscribers");
       std_msgs::msg::Header header;
       header.frame_id = "camera";
@@ -176,7 +180,7 @@ void EurocPublisher::Publish() {
       auto bridge_img = cv_bridge::CvImage(
           header, sensor_msgs::image_encodings::BGR8, img.data);
 
-      pub->publish(*bridge_img.toImageMsg());
+      pub.publish(bridge_img.toImageMsg());
     }
   };
 

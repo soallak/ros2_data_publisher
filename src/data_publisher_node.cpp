@@ -16,6 +16,5 @@ int main(int argc, char** argv) {
       simulation::CreateDataPublisher(simulation::DatasetType::EUROC, path);
 
   data_publisher->Start();
-  rclcpp::spin(data_publisher);
-  rclcpp::shutdown();
+  rclcpp::spin(data_publisher->GetNode());
 }

@@ -6,15 +6,13 @@
 
 namespace simulation {
 
-class IDataPublisher : public rclcpp::Node {
+class IDataPublisher {
  public:
   virtual void Start() = 0;
   virtual void Stop() = 0;
   virtual void Pause() = 0;
   virtual void Restart() = 0;
-
- protected:
-  IDataPublisher(std::string node_name) : rclcpp::Node(node_name) {}
+  virtual std::shared_ptr<rclcpp::Node> GetNode() = 0;
 };
 
 enum class DatasetType : std::uint8_t { EUROC = 0, TUM = 1 };

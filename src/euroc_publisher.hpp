@@ -6,6 +6,7 @@
 #include <chrono>
 #include <data_publisher/data_publisher.hpp>
 #include <functional>
+#include <image_transport/image_transport.hpp>
 #include <memory>
 #include <mutex>
 #include <opencv2/core.hpp>
@@ -25,6 +26,7 @@ class EurocPublisher : public IDataPublisher,
   void Stop() override;
   void Pause() override;
   void Restart() override;
+  std::shared_ptr<rclcpp::Node> GetNode() override;
 
  private:
   void Init();
@@ -32,8 +34,7 @@ class EurocPublisher : public IDataPublisher,
   void Publish();
 
  private:
-  using ImagePublisherPtr =
-      std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>>;
+  using ImagePublisher = image_transport::Publisher;
   using WallTimerPtr = rclcpp::WallTimer<std::function<void()>>::SharedPtr;
 
   struct Image {
@@ -44,12 +45,14 @@ class EurocPublisher : public IDataPublisher,
 
  private:
   std::string path_;
-  ImagePublisherPtr pub_left_;
-  ImagePublisherPtr pub_right_;
+  std::atomic<bool> paused_;
+  std::shared_ptr<rclcpp::Node> node_;
+  image_transport::ImageTransport it_;
+  ImagePublisher pub_left_;
+  ImagePublisher pub_right_;
   WallTimerPtr pub_timer_;
   WallTimerPtr load_img_timer_;
 
-  std::atomic<bool> paused_;
   std::mutex img_q_mtx_;
   std::queue<Image> left_img_q_;
   std::queue<Image> right_img_q_;
