@@ -12,6 +12,7 @@ class IDataPublisher {
   virtual void Stop() = 0;
   virtual void Pause() = 0;
   virtual void Restart() = 0;
+  virtual void SetPath(std::string path) = 0;
   virtual std::shared_ptr<rclcpp::Node> GetNode() = 0;
 };
 

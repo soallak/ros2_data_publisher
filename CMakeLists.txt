@@ -30,7 +30,6 @@ target_include_directories(${PROJECT_NAME}
     src/
 )
 
-
 ament_target_dependencies(${PROJECT_NAME} 
 "Boost" 
 "cv_bridge"
@@ -40,6 +39,8 @@ ament_target_dependencies(${PROJECT_NAME}
 "OpenCV" 
 "sensor_msgs" 
 )
+
+rclcpp_components_register_nodes(${PROJECT_NAME} "simulation::EurocPublisher")
 
 add_executable(data_publisher_node src/data_publisher_node.cpp)
 target_link_libraries(data_publisher_node

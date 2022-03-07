@@ -20,12 +20,21 @@ namespace simulation {
 class EurocPublisher : public IDataPublisher,
                        public std::enable_shared_from_this<EurocPublisher> {
  public:
-  EurocPublisher(std::string path);
+  EurocPublisher();
   virtual ~EurocPublisher();
+
+  /**
+  This is need to make this a component
+  */
+  explicit EurocPublisher(rclcpp::NodeOptions const& options);
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr
+  get_node_base_interface();
+
   void Start() override;
   void Stop() override;
   void Pause() override;
   void Restart() override;
+  void SetPath(std::string path) override;
   std::shared_ptr<rclcpp::Node> GetNode() override;
 
  private:

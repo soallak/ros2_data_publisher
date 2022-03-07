@@ -21,17 +21,29 @@
 
 namespace simulation {
 
-EurocPublisher::EurocPublisher(std::string path)
-    : path_(path),
-      paused_(true),
+EurocPublisher::EurocPublisher()
+    : paused_{true},
       node_(std::make_shared<rclcpp::Node>("euroc")),
-      it_(node_) {
-  Init();
-}
+      it_(node_) {}
 
 EurocPublisher::~EurocPublisher() { Stop(); }
 
+EurocPublisher::EurocPublisher(rclcpp::NodeOptions const& options)
+    : paused_(true),
+      node_(std::make_shared<rclcpp::Node>("euroc", options)),
+      it_(node_) {}
+
+rclcpp::node_interfaces::NodeBaseInterface::SharedPtr
+EurocPublisher::get_node_base_interface() {
+  return node_->get_node_base_interface();
+}
+
 void EurocPublisher::Start() {
+  if (path_.empty()) {
+    RCLCPP_ERROR_STREAM(node_->get_logger(), "Dataset path is not yet set");
+    return;
+  }
+
   pub_left_ = it_.advertise("left/image_raw", q_size_);
   pub_right_ = it_.advertise("right/image_raw", q_size_);
   std::chrono::milliseconds period(period_ms_);
@@ -66,9 +78,18 @@ void EurocPublisher::Restart() {
   Start();
 }
 
+void EurocPublisher::SetPath(std::string path) {
+  path_ = path;
+  Init();
+}
+
 std::shared_ptr<rclcpp::Node> EurocPublisher::GetNode() { return node_; }
 
 void EurocPublisher::Init() {
+  if (path_.empty()) {
+    throw std::runtime_error("Dataset path is not yet set");
+  }
+
   namespace fs = boost::filesystem;
   auto leftdir = fs::path(path_ + "/cam0/data/");
   auto rightdir = fs::path(path_ + "/cam1/data/");
@@ -85,7 +106,7 @@ void EurocPublisher::Init() {
   left_files_ = read_image_files(leftdir);
   right_files_ = read_image_files(rightdir);
 
-  auto compare = [this](fs::path const& p1, fs::path const& p2) -> bool {
+  auto compare = [](fs::path const& p1, fs::path const& p2) -> bool {
     auto timestamp1_str = p1.filename().stem().string();
     auto timestamp2_str = p2.filename().stem().string();
 
@@ -189,3 +210,6 @@ void EurocPublisher::Publish() {
 }
 
 }  // namespace simulation
+
+#include <rclcpp_components/register_node_macro.hpp>
+RCLCPP_COMPONENTS_REGISTER_NODE(simulation::EurocPublisher)
