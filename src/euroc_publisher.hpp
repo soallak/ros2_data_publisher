@@ -44,7 +44,7 @@ class EurocPublisher : public IDataPublisher,
   void Publish();
 
  private:
-  using ImagePublisher = image_transport::Publisher;
+  using CameraPublisher = image_transport::CameraPublisher;
   using WallTimerPtr = rclcpp::WallTimer<std::function<void()>>::SharedPtr;
 
   struct Image {
@@ -58,8 +58,8 @@ class EurocPublisher : public IDataPublisher,
   std::atomic<bool> initialized_;
   std::shared_ptr<rclcpp::Node> node_;
   image_transport::ImageTransport it_;
-  ImagePublisher pub_left_;
-  ImagePublisher pub_right_;
+  CameraPublisher pub_left_;
+  CameraPublisher pub_right_;
   WallTimerPtr pub_timer_;
   WallTimerPtr load_img_timer_;
 
@@ -79,6 +79,37 @@ class EurocPublisher : public IDataPublisher,
   int64_t period_ms_ = 50;  /// Publishing period
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
       parameter_callback_;
+
+  // CameraInfo
+  // https://gitlab.plc2.de/Ouassil/ros2-image-pipeline-acceleration/-/blob/main/resources/euroc_stereo.yaml
+  // I won't make this complicated by reading these values from yaml. I hard
+  // code them here
+
+  const double fx_ = 435.2046959714599;
+  const double fy_ = 435.2046959714599;
+  const double cx_ = 367.4517211914062;
+  const double cy_ = 252.2008514404297;
+
+  const double k_left_[9] = {458.654, 0.0, 367.215, 0.0, 457.296,
+                             248.375, 0.0, 0.0,     1.0};
+  const double d_left_[6] = {-0.28340811, 0.07395907, 0.00019359,
+                             1.76187114e-05, 0.0};
+  const double r_left_[9] = {
+      0.999966347530033,     -0.001422739138722922, 0.008079580483432283,
+      0.001365741834644127,  0.9999741760894847,    0.007055629199258132,
+      -0.008089410156878961, -0.007044357138835809, 0.9999424675829176};
+  const double k_right_[9] = {457.587, 0.0, 379.999, 0.0, 456.134,
+                              255.238, 0.0, 0.0,     1};
+  const double d_right_[5] = {-0.28368365, 0.07451284, -0.00010473,
+                              -3.555907e-05, 0.0};
+  const double r_right_[9] = {
+      0.9999633526194376,    -0.003625811871560086, 0.007755443660172947,
+      0.003680398547259526,  0.9999684752771629,    -0.007035845251224894,
+      -0.007729688520722713, 0.007064130529506649,  0.999945173484644};
+
+  const double focal_x_baseline_ = 47.90639384423901;
+  unsigned int width_ = 752;
+  unsigned int height_ = 480;
 };
 
 }  // namespace simulation

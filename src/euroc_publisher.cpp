@@ -9,11 +9,13 @@
 #include <boost/filesystem/file_status.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <opencv2/imgcodecs.hpp>
 #include <queue>
+#include <sensor_msgs/distortion_models.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <string>
 #include <vector>
@@ -47,8 +49,9 @@ void EurocPublisher::Start() {
 
   RCLCPP_INFO_STREAM(node_->get_logger(), "Publishing dataset in " << path_);
 
-  pub_left_ = it_.advertise("left/image_raw", q_size_);
-  pub_right_ = it_.advertise("right/image_raw", q_size_);
+  pub_left_ = it_.advertiseCamera("left/image_raw", q_size_);
+  pub_right_ = it_.advertiseCamera("right/image_raw", q_size_);
+
   std::chrono::milliseconds period(period_ms_);
   std::function<void()> publish_callback =
       std::bind(&EurocPublisher::Publish, this);
@@ -206,7 +209,8 @@ void EurocPublisher::Publish() {
     right_img = front_and_pop(right_img_q_);
   }
 
-  auto publish = [this](Image& img, ImagePublisher& pub) {
+  auto publish = [this](Image& img, sensor_msgs::msg::CameraInfo& info,
+                        CameraPublisher& pub) {
     if (!img.data.empty() && pub.getNumSubscribers()) {
       RCLCPP_DEBUG_STREAM(node_->get_logger(),
                           "Publishing topic: " << pub.getTopic() << "to "
@@ -218,12 +222,45 @@ void EurocPublisher::Publish() {
       auto bridge_img = cv_bridge::CvImage(
           header, sensor_msgs::image_encodings::BGR8, img.data);
 
-      pub.publish(bridge_img.toImageMsg());
+      info.header = header;
+
+      pub.publish(*bridge_img.toImageMsg(), info);
     }
   };
 
-  publish(left_img, pub_left_);
-  publish(right_img, pub_right_);
+  const double k[9] = {fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1};
+
+  auto init_camera_info_msg = [width = width_, height = height_](
+                                  double const raw_k[9], double const rect_k[9],
+                                  double const d[5], double const r[9]) {
+    sensor_msgs::msg::CameraInfo info;
+    info.width = width;
+    info.height = height;
+    info.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
+    std::memcpy(info.k.data(), raw_k, 9 * sizeof(double));
+    info.d.resize(5);
+    std::memcpy(info.d.data(), d, 5 * sizeof(double));
+    std::memcpy(info.r.data(), r, 9 * sizeof(double));
+
+    std::memcpy(&info.p[0], rect_k, 3 * sizeof(double));
+    info.p[3] = 0.;
+    std::memcpy(&info.p[4], &rect_k[3], 3 * sizeof(double));
+    info.p[7] = 0.;
+    std::memcpy(&info.p[8], &rect_k[6], 3 * sizeof(double));
+    info.p[11] = 0.;
+
+    return info;
+  };
+
+  sensor_msgs::msg::CameraInfo left_info =
+      init_camera_info_msg(k, k_left_, d_left_, r_left_);
+  sensor_msgs::msg::CameraInfo right_info =
+      init_camera_info_msg(k, k_right_, d_right_, r_right_);
+
+  right_info.p[3] = -right_info.p[0] * focal_x_baseline_;
+
+  publish(left_img, left_info, pub_left_);
+  publish(right_img, right_info, pub_right_);
 }
 
 }  // namespace simulation
