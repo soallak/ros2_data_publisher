@@ -6,6 +6,7 @@
 #include <array>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/directory.hpp>
+#include <boost/filesystem/file_status.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 #include <functional>
@@ -21,17 +22,18 @@
 
 namespace simulation {
 
-EurocPublisher::EurocPublisher()
-    : paused_{true},
-      node_(std::make_shared<rclcpp::Node>("euroc")),
-      it_(node_) {}
+EurocPublisher::EurocPublisher() : EurocPublisher(rclcpp::NodeOptions()) {}
 
 EurocPublisher::~EurocPublisher() { Stop(); }
 
 EurocPublisher::EurocPublisher(rclcpp::NodeOptions const& options)
     : paused_(true),
+      initialized_(false),
       node_(std::make_shared<rclcpp::Node>("euroc", options)),
-      it_(node_) {}
+      it_(node_) {
+  path_ = node_->declare_parameter("dataset_path", std::string(""));
+  period_ms_ = node_->declare_parameter("period_ms", period_ms_);
+}
 
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr
 EurocPublisher::get_node_base_interface() {
@@ -39,10 +41,11 @@ EurocPublisher::get_node_base_interface() {
 }
 
 void EurocPublisher::Start() {
-  if (path_.empty()) {
-    RCLCPP_ERROR_STREAM(node_->get_logger(), "Dataset path is not yet set");
-    return;
+  if (!initialized_) {
+    Init();
   }
+
+  RCLCPP_INFO_STREAM(node_->get_logger(), "Publishing dataset in " << path_);
 
   pub_left_ = it_.advertise("left/image_raw", q_size_);
   pub_right_ = it_.advertise("right/image_raw", q_size_);
@@ -80,14 +83,18 @@ void EurocPublisher::Restart() {
 
 void EurocPublisher::SetPath(std::string path) {
   path_ = path;
-  Init();
+  rclcpp::Parameter param("dataset_path", path_);
+  node_->set_parameter(param);
+  Restart();
 }
 
 std::shared_ptr<rclcpp::Node> EurocPublisher::GetNode() { return node_; }
 
 void EurocPublisher::Init() {
-  if (path_.empty()) {
-    throw std::runtime_error("Dataset path is not yet set");
+  if (!IsValidPath(path_)) {
+    RCLCPP_ERROR_STREAM(node_->get_logger(),
+                        "Dataset path " << path_ << " is not valid");
+    return;
   }
 
   namespace fs = boost::filesystem;
@@ -127,6 +134,16 @@ void EurocPublisher::Init() {
   }
   left_files_idx_ = 0;
   right_files_idx_ = 0;
+  initialized_ = true;
+}
+
+bool EurocPublisher::IsValidPath(std::string path) {
+  namespace fs = boost::filesystem;
+  fs::path root_path(path);
+  fs::path cam0_path(path + "/cam0/data");
+  fs::path cam1_path(path + "/cam1/data");
+
+  return fs::is_directory(cam0_path) and fs::is_directory(cam1_path);
 }
 
 void EurocPublisher::LoadImages() {

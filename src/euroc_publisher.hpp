@@ -39,6 +39,7 @@ class EurocPublisher : public IDataPublisher,
 
  private:
   void Init();
+  bool IsValidPath(std::string path);
   void LoadImages();
   void Publish();
 
@@ -53,8 +54,8 @@ class EurocPublisher : public IDataPublisher,
   };
 
  private:
-  std::string path_;
   std::atomic<bool> paused_;
+  std::atomic<bool> initialized_;
   std::shared_ptr<rclcpp::Node> node_;
   image_transport::ImageTransport it_;
   ImagePublisher pub_left_;
@@ -72,7 +73,12 @@ class EurocPublisher : public IDataPublisher,
   unsigned int right_files_idx_{0};
 
   static constexpr unsigned int q_size_ = 10;  /// Max amount of images loaded
-  static constexpr unsigned int period_ms_ = 50;  /// Publishing period
+
+  // ROS parameters
+  std::string path_;
+  int64_t period_ms_ = 50;  /// Publishing period
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
+      parameter_callback_;
 };
 
 }  // namespace simulation

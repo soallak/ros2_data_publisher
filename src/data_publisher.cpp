@@ -7,8 +7,7 @@
 
 namespace simulation {
 
-std::unique_ptr<IDataPublisher> CreateDataPublisher(DatasetType type,
-                                                    std::string path) {
+std::unique_ptr<IDataPublisher> CreateDataPublisher(DatasetType type) {
   std::unique_ptr<IDataPublisher> ret;
   switch (type) {
     case DatasetType::EUROC:
@@ -17,7 +16,6 @@ std::unique_ptr<IDataPublisher> CreateDataPublisher(DatasetType type,
     default:
       throw std::runtime_error("Not yet implemented");
   }
-  ret->SetPath(path);
   return ret;
 }
 

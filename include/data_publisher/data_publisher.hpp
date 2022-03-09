@@ -18,7 +18,6 @@ class IDataPublisher {
 
 enum class DatasetType : std::uint8_t { EUROC = 0, TUM = 1 };
 
-std::unique_ptr<IDataPublisher> CreateDataPublisher(DatasetType type,
-                                                    std::string path);
+std::unique_ptr<IDataPublisher> CreateDataPublisher(DatasetType type);
 
 }  // namespace simulation
