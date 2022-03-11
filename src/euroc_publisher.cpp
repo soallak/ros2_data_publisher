@@ -35,20 +35,23 @@ EurocPublisher::EurocPublisher(rclcpp::NodeOptions const& options)
       it_(node_) {
   path_ = node_->declare_parameter("dataset_path", std::string(""));
   period_ms_ = node_->declare_parameter("period_ms", period_ms_);
+  // Autostart
+  Start();
 }
 
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr
 EurocPublisher::get_node_base_interface() {
-  return node_->get_node_base_interface();
+  if (node_) return node_->get_node_base_interface();
 }
 
 void EurocPublisher::Start() {
+  if (!paused_) return;
+
   if (!initialized_) {
     Init();
   }
 
   RCLCPP_INFO_STREAM(node_->get_logger(), "Publishing dataset in " << path_);
-
   pub_left_ = it_.advertiseCamera("left/image_raw", q_size_);
   pub_right_ = it_.advertiseCamera("right/image_raw", q_size_);
 
