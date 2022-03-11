@@ -234,8 +234,8 @@ void EurocPublisher::Publish() {
   const double k[9] = {fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1};
 
   auto init_camera_info_msg = [width = width_, height = height_](
-                                  double const raw_k[9], double const rect_k[9],
-                                  double const d[5], double const r[9]) {
+                                  double const raw_k[9], double const d[5],
+                                  double const r[9]) {
     sensor_msgs::msg::CameraInfo info;
     info.width = width;
     info.height = height;
@@ -245,20 +245,20 @@ void EurocPublisher::Publish() {
     std::memcpy(info.d.data(), d, 5 * sizeof(double));
     std::memcpy(info.r.data(), r, 9 * sizeof(double));
 
-    std::memcpy(&info.p[0], rect_k, 3 * sizeof(double));
+    std::memcpy(&info.p[0], raw_k, 3 * sizeof(double));
     info.p[3] = 0.;
-    std::memcpy(&info.p[4], &rect_k[3], 3 * sizeof(double));
+    std::memcpy(&info.p[4], &raw_k[3], 3 * sizeof(double));
     info.p[7] = 0.;
-    std::memcpy(&info.p[8], &rect_k[6], 3 * sizeof(double));
+    std::memcpy(&info.p[8], &raw_k[6], 3 * sizeof(double));
     info.p[11] = 0.;
 
     return info;
   };
 
   sensor_msgs::msg::CameraInfo left_info =
-      init_camera_info_msg(k, k_left_, d_left_, r_left_);
+      init_camera_info_msg(k, d_left_, r_left_);
   sensor_msgs::msg::CameraInfo right_info =
-      init_camera_info_msg(k, k_right_, d_right_, r_right_);
+      init_camera_info_msg(k, d_right_, r_right_);
 
   right_info.p[3] = -right_info.p[0] * focal_x_baseline_;
 
