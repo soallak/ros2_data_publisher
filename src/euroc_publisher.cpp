@@ -35,6 +35,7 @@ EurocPublisher::EurocPublisher(rclcpp::NodeOptions const& options)
       it_(node_) {
   path_ = node_->declare_parameter("dataset_path", std::string(""));
   period_ms_ = node_->declare_parameter("period_ms", period_ms_);
+  frame_id_ = node_->declare_parameter("frame_id", "camera_frame");
   // Autostart
   Start();
 }
@@ -220,7 +221,7 @@ void EurocPublisher::Publish() {
                                                << pub.getNumSubscribers()
                                                << "subscribers");
       std_msgs::msg::Header header;
-      header.frame_id = "camera";
+      header.frame_id = frame_id_;
       header.stamp = rclcpp::Time(img.timestamp);
       auto bridge_img = cv_bridge::CvImage(
           header, sensor_msgs::image_encodings::BGR8, img.data);

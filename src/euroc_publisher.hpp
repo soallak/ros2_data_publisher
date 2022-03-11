@@ -76,6 +76,7 @@ class EurocPublisher : public IDataPublisher,
 
   // ROS parameters
   std::string path_;
+  std::string frame_id_;
   int64_t period_ms_ = 50;  /// Publishing period
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
       parameter_callback_;
