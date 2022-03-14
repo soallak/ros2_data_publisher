@@ -13,6 +13,9 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <queue>
 #include <sensor_msgs/distortion_models.hpp>
@@ -232,34 +235,40 @@ void EurocPublisher::Publish() {
     }
   };
 
-  const double k[9] = {fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1};
+  auto init_camera_info_msg =
+      [width = width_, height = height_, fx = fx_, fy = fy_, cx = cx_,
+       cy = cy_](double const raw_k[9], double const d[5], double const r[9]) {
+        sensor_msgs::msg::CameraInfo info;
+        info.width = width;
+        info.height = height;
+        info.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
+        std::memcpy(info.k.data(), raw_k, 9 * sizeof(double));
+        info.d.resize(5);
+        std::memcpy(info.d.data(), d, 5 * sizeof(double));
+        std::memcpy(info.r.data(), r, 9 * sizeof(double));
 
-  auto init_camera_info_msg = [width = width_, height = height_](
-                                  double const raw_k[9], double const d[5],
-                                  double const r[9]) {
-    sensor_msgs::msg::CameraInfo info;
-    info.width = width;
-    info.height = height;
-    info.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
-    std::memcpy(info.k.data(), raw_k, 9 * sizeof(double));
-    info.d.resize(5);
-    std::memcpy(info.d.data(), d, 5 * sizeof(double));
-    std::memcpy(info.r.data(), r, 9 * sizeof(double));
+        // cv::Mat_<double> raw_k_mat(3, 3, const_cast<double*>(raw_k));
+        // cv::_InputArray d_a(d, 5);
 
-    std::memcpy(&info.p[0], raw_k, 3 * sizeof(double));
-    info.p[3] = 0.;
-    std::memcpy(&info.p[4], &raw_k[3], 3 * sizeof(double));
-    info.p[7] = 0.;
-    std::memcpy(&info.p[8], &raw_k[6], 3 * sizeof(double));
-    info.p[11] = 0.;
+        // cv::Mat_<double> rect_k_mat = cv::getOptimalNewCameraMatrix(
+        //     raw_k_mat, d_a, cv::Size(width, height), 0);
 
-    return info;
-  };
+        const double rect_k[9] = {fx, 0, cx, 0, fy, cy, 0, 0, 1};
+
+        std::memcpy(&info.p[0], &rect_k[0], 3 * sizeof(double));
+        info.p[3] = 0.;
+        std::memcpy(&info.p[4], &rect_k[3], 3 * sizeof(double));
+        info.p[7] = 0.;
+        std::memcpy(&info.p[8], &rect_k[6], 3 * sizeof(double));
+        info.p[11] = 0.;
+
+        return info;
+      };
 
   sensor_msgs::msg::CameraInfo left_info =
-      init_camera_info_msg(k, d_left_, r_left_);
+      init_camera_info_msg(k_left_, d_left_, r_left_);
   sensor_msgs::msg::CameraInfo right_info =
-      init_camera_info_msg(k, d_right_, r_right_);
+      init_camera_info_msg(k_right_, d_right_, r_right_);
 
   right_info.p[3] = -right_info.p[0] * focal_x_baseline_;
 
