@@ -174,7 +174,7 @@ void EurocPublisher::LoadImages() {
         // read images outside of lock
         Image img;
         img.file = files[idx + i++];
-        img.data = cv::imread(img.file.string());
+        img.data = cv::imread(img.file.string(), cv::IMREAD_GRAYSCALE);
         img.timestamp = std::stol(img.file.filename().stem().string());
         // then push
         lk.lock();
@@ -217,17 +217,17 @@ void EurocPublisher::Publish() {
   }
 
   auto publish = [this](Image& img, sensor_msgs::msg::CameraInfo& info,
-                        CameraPublisher& pub) {
+                        CameraPublisher& pub, std::string&& frame_id_prfx) {
     if (!img.data.empty() && pub.getNumSubscribers()) {
       RCLCPP_DEBUG_STREAM(node_->get_logger(),
                           "Publishing topic: " << pub.getTopic() << "to "
                                                << pub.getNumSubscribers()
                                                << "subscribers");
       std_msgs::msg::Header header;
-      header.frame_id = frame_id_;
+      header.frame_id = frame_id_prfx + frame_id_;
       header.stamp = rclcpp::Time(img.timestamp);
       auto bridge_img = cv_bridge::CvImage(
-          header, sensor_msgs::image_encodings::BGR8, img.data);
+          header, sensor_msgs::image_encodings::MONO8, img.data);
 
       info.header = header;
 
@@ -247,12 +247,6 @@ void EurocPublisher::Publish() {
         std::memcpy(info.d.data(), d, 5 * sizeof(double));
         std::memcpy(info.r.data(), r, 9 * sizeof(double));
 
-        // cv::Mat_<double> raw_k_mat(3, 3, const_cast<double*>(raw_k));
-        // cv::_InputArray d_a(d, 5);
-
-        // cv::Mat_<double> rect_k_mat = cv::getOptimalNewCameraMatrix(
-        //     raw_k_mat, d_a, cv::Size(width, height), 0);
-
         const double rect_k[9] = {fx, 0, cx, 0, fy, cy, 0, 0, 1};
 
         std::memcpy(&info.p[0], &rect_k[0], 3 * sizeof(double));
@@ -261,6 +255,15 @@ void EurocPublisher::Publish() {
         info.p[7] = 0.;
         std::memcpy(&info.p[8], &rect_k[6], 3 * sizeof(double));
         info.p[11] = 0.;
+
+        info.binning_x = 1;
+        info.binning_y = 1;
+
+        info.roi.do_rectify = false;
+        info.roi.height = 0;
+        info.roi.width = 0;
+        info.roi.x_offset = 0;
+        info.roi.y_offset = 0;
 
         return info;
       };
@@ -272,8 +275,8 @@ void EurocPublisher::Publish() {
 
   right_info.p[3] = -right_info.p[0] * focal_x_baseline_;
 
-  publish(left_img, left_info, pub_left_);
-  publish(right_img, right_info, pub_right_);
+  publish(left_img, left_info, pub_left_, "left_");
+  publish(right_img, right_info, pub_right_, "right_");
 }
 
 }  // namespace simulation
