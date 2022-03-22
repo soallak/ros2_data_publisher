@@ -16,6 +16,7 @@ find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(slam_tracepoint_provider REQUIRED)
 
 set(${PROJECT_NAME}_src 
   src/data_publisher.cpp
@@ -38,6 +39,7 @@ ament_target_dependencies(${PROJECT_NAME}
 "image_transport"
 "OpenCV" 
 "sensor_msgs" 
+"slam_tracepoint_provider"
 )
 
 rclcpp_components_register_nodes(${PROJECT_NAME} "simulation::EurocPublisher")

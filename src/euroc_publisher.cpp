@@ -1,6 +1,7 @@
 #include "euroc_publisher.hpp"
 
 #include <cv_bridge/cv_bridge.h>
+#include <lttng/tracepoint-types.h>
 
 #include <algorithm>
 #include <array>
@@ -11,6 +12,7 @@
 #include <chrono>
 #include <cstring>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <opencv2/calib3d.hpp>
@@ -24,6 +26,16 @@
 #include <vector>
 
 #include "data_publisher/data_publisher.hpp"
+
+// clang-format off
+// todo: make this conditional at compile time
+#define LTTNG_UST_TRACEPOINT_DEFINE
+#define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
+#include <slam_tracepoint_provider/tracepoint.hpp>
+// clang-format on
+
+static constexpr char const* label_compute_publish = "publish";
+// static constexpr char const* label_compute_imread = "imread";
 
 namespace simulation {
 
@@ -46,6 +58,8 @@ EurocPublisher::EurocPublisher(rclcpp::NodeOptions const& options)
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr
 EurocPublisher::get_node_base_interface() {
   if (node_) return node_->get_node_base_interface();
+
+  return nullptr;
 }
 
 void EurocPublisher::Start() {
@@ -197,6 +211,7 @@ void EurocPublisher::LoadImages() {
 
 void EurocPublisher::Publish() {
   if (paused_) return;
+
   RCLCPP_DEBUG_STREAM(node_->get_logger(), "Publishing");
   auto front_and_pop = [](std::queue<Image>& q) -> Image {
     if (!q.empty()) {
@@ -217,21 +232,28 @@ void EurocPublisher::Publish() {
   }
 
   auto publish = [this](Image& img, sensor_msgs::msg::CameraInfo& info,
-                        CameraPublisher& pub, std::string&& frame_id_prfx) {
+                        CameraPublisher& pub,
+                        std::string&& frame_id_prfx) -> void {
     if (!img.data.empty() && pub.getNumSubscribers()) {
       RCLCPP_DEBUG_STREAM(node_->get_logger(),
                           "Publishing topic: " << pub.getTopic() << "to "
                                                << pub.getNumSubscribers()
                                                << "subscribers");
+      auto stp = node_->now();
       std_msgs::msg::Header header;
       header.frame_id = frame_id_prfx + frame_id_;
       header.stamp = rclcpp::Time(img.timestamp);
+
       auto bridge_img = cv_bridge::CvImage(
           header, sensor_msgs::image_encodings::MONO8, img.data);
 
       info.header = header;
-
       pub.publish(*bridge_img.toImageMsg(), info);
+      auto etp = node_->now();
+      TP_COMPUTE_CPU(
+          node_,
+          std::chrono::nanoseconds(etp.nanoseconds() - stp.nanoseconds()),
+          std::string(label_compute_publish) + pub.getTopic());
     }
   };
 
@@ -275,8 +297,14 @@ void EurocPublisher::Publish() {
 
   right_info.p[3] = -right_info.p[0] * focal_x_baseline_;
 
-  publish(left_img, left_info, pub_left_, "left_");
+  // left and right publishing in parallel
+  auto left_future = std::async(std::launch::async, [&]() {
+    publish(left_img, left_info, pub_left_, "left_");
+  });
+
   publish(right_img, right_info, pub_right_, "right_");
+
+  left_future.get();
 }
 
 }  // namespace simulation
