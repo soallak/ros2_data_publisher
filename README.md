@@ -1,6 +1,6 @@
 # Image Data Publisher Package
 
-A ROS2 package for publishing common image datases 
+A ROS2 package for publishing common image dataset
 
 ## Supported Datasets
 
