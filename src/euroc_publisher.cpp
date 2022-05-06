@@ -299,10 +299,10 @@ void EurocPublisher::Publish() {
 
   // left and right publishing in parallel
   auto left_future = std::async(std::launch::async, [&]() {
-    publish(left_img, left_info, pub_left_, "left_");
+    publish(left_img, left_info, pub_left_, "");
   });
 
-  publish(right_img, right_info, pub_right_, "right_");
+  publish(right_img, right_info, pub_right_, "");
 
   left_future.get();
 }
