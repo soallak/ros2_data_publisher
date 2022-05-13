@@ -6,9 +6,6 @@
 #include <algorithm>
 #include <array>
 #include <boost/filesystem.hpp>
-#include <boost/filesystem/directory.hpp>
-#include <boost/filesystem/file_status.hpp>
-#include <boost/filesystem/path.hpp>
 #include <chrono>
 #include <cstring>
 #include <functional>
