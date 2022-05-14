@@ -65,8 +65,6 @@ void EurocPublisher::Start() {
   if (!initialized_) {
     Init();
   }
-
-  RCLCPP_INFO_STREAM(node_->get_logger(), "Publishing dataset in " << path_);
   pub_left_ = it_.advertiseCamera("left/image_raw", q_size_);
   pub_right_ = it_.advertiseCamera("right/image_raw", q_size_);
 
@@ -185,7 +183,6 @@ void EurocPublisher::LoadImages() {
         // read images outside of lock
         Image img;
         img.file = files[idx + i++];
-        RCLCPP_INFO_STREAM(node_->get_logger(), "Load Image " << img.file);
         img.data = cv::imread(img.file.string(), cv::IMREAD_GRAYSCALE);
         img.timestamp = std::stol(img.file.filename().stem().string());
         // then push

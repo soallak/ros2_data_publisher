@@ -36,7 +36,7 @@ def generate_launch_description():
             condition=LaunchConfigurationEquals(container_name_arg.name, ''),
             package='rclcpp_components',
             executable='component_container',
-            name='data_euroc',
+            name='euroc_container',
             namespace='',
             composable_node_descriptions=composable_nodes,
         ),
@@ -51,6 +51,6 @@ def generate_launch_description():
         SetLaunchConfiguration(
             condition=LaunchConfigurationEquals(container_name_arg.name, ''),
             name=container_name_arg.name,
-            value='data_euroc_container'
+            value='euroc_container'
         )
     ])

@@ -72,7 +72,7 @@ class EurocPublisher : public IDataPublisher,
   unsigned int left_files_idx_{0};
   unsigned int right_files_idx_{0};
 
-  static constexpr unsigned int q_size_ = 4;  /// Max amount of images loaded
+  static constexpr unsigned int q_size_ = 8;  /// Max amount of images loaded
 
   // ROS parameters
   std::string path_;
