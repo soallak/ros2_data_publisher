@@ -175,7 +175,7 @@ void EurocPublisher::LoadImages() {
   std::unique_lock<std::mutex> lk(img_q_mtx_);
   if (left_img_q_.size() < q_size_ / 2 && right_img_q_.size() < q_size_ / 2) {
     RCLCPP_DEBUG_STREAM(node_->get_logger(), "Loading images from disk");
-    auto load_images = [&lk, q_size = q_size_](
+    auto load_images = [&lk, q_size = q_size_, this](
                            std::queue<Image>& q,
                            std::vector<boost::filesystem::path> const& files,
                            unsigned int idx) -> int {
@@ -185,6 +185,7 @@ void EurocPublisher::LoadImages() {
         // read images outside of lock
         Image img;
         img.file = files[idx + i++];
+        RCLCPP_INFO_STREAM(node_->get_logger(), "Load Image " << img.file);
         img.data = cv::imread(img.file.string(), cv::IMREAD_GRAYSCALE);
         img.timestamp = std::stol(img.file.filename().stem().string());
         // then push
@@ -207,7 +208,9 @@ void EurocPublisher::LoadImages() {
 }
 
 void EurocPublisher::Publish() {
-  if (paused_) return;
+  if (paused_ ||
+      (!pub_left_.getNumSubscribers() && !pub_right_.getNumSubscribers()))
+    return;
 
   RCLCPP_DEBUG_STREAM(node_->get_logger(), "Publishing");
   auto front_and_pop = [](std::queue<Image>& q) -> Image {
