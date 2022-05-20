@@ -173,7 +173,7 @@ void EurocPublisher::LoadImages() {
   std::unique_lock<std::mutex> lk(img_q_mtx_);
   if (left_img_q_.size() < q_size_ / 2 && right_img_q_.size() < q_size_ / 2) {
     RCLCPP_DEBUG_STREAM(node_->get_logger(), "Loading images from disk");
-    auto load_images = [&lk, q_size = q_size_, this](
+    auto load_images = [&lk, q_size = q_size_](
                            std::queue<Image>& q,
                            std::vector<boost::filesystem::path> const& files,
                            unsigned int idx) -> int {
