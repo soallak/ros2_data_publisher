@@ -13,9 +13,17 @@ The following datasets are currently supported:
 ros2 run data_publisher data_publisher_node  --ros-args -p dataset_path:=<dataset-path> -p period_ms:=<period>
 ```
 
+## Parameters
+
+- `dataset_path`
+- `frame_id`
+- `period_ms`
+
+
 ## Published Topics
 
 ### EuRoC MAV Dataset
- - `/left/image_raw`
- - `/right/image_raw`
+ - `left/image_raw`
+ - `right/image_raw`
+
 
