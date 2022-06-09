@@ -26,7 +26,6 @@
 
 // clang-format off
 // todo: make this conditional at compile time
-#define LTTNG_UST_TRACEPOINT_DEFINE
 #define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
 #include <slam_tracepoint_provider/tracepoint.hpp>
 // clang-format on
@@ -173,7 +172,7 @@ void EurocPublisher::LoadImages() {
   std::unique_lock<std::mutex> lk(img_q_mtx_);
   if (left_img_q_.size() < q_size_ / 2 && right_img_q_.size() < q_size_ / 2) {
     RCLCPP_DEBUG_STREAM(node_->get_logger(), "Loading images from disk");
-    auto load_images = [&lk, q_size = q_size_](
+    auto load_images = [&lk, q_size = q_size_, this](
                            std::queue<Image>& q,
                            std::vector<boost::filesystem::path> const& files,
                            unsigned int idx) -> int {
@@ -183,6 +182,8 @@ void EurocPublisher::LoadImages() {
         // read images outside of lock
         Image img;
         img.file = files[idx + i++];
+        RCLCPP_INFO_STREAM(node_->get_logger(),
+                           "Loading image" << img.file.string());
         img.data = cv::imread(img.file.string(), cv::IMREAD_GRAYSCALE);
         img.timestamp = std::stol(img.file.filename().stem().string());
         // then push
@@ -205,8 +206,9 @@ void EurocPublisher::LoadImages() {
 }
 
 void EurocPublisher::Publish() {
-  if (paused_ ||
-      (!pub_left_.getNumSubscribers() && !pub_right_.getNumSubscribers()))
+  // see https://github.com/ros-perception/image_common/issues/114
+  if (paused_ /* ||
+      (!pub_left_.getNumSubscribers() && !pub_right_.getNumSubscribers()) */)
     return;
 
   RCLCPP_DEBUG_STREAM(node_->get_logger(), "Publishing");
@@ -231,11 +233,11 @@ void EurocPublisher::Publish() {
   auto publish = [this](Image& img, sensor_msgs::msg::CameraInfo& info,
                         CameraPublisher& pub,
                         std::string&& frame_id_prfx) -> void {
-    if (!img.data.empty() && pub.getNumSubscribers()) {
-      RCLCPP_DEBUG_STREAM(node_->get_logger(),
-                          "Publishing topic: " << pub.getTopic() << "to "
-                                               << pub.getNumSubscribers()
-                                               << "subscribers");
+    if (!img.data.empty() /* && pub.getNumSubscribers() */) {
+      RCLCPP_DEBUG_STREAM(
+          node_->get_logger(),
+          "Publishing  " << img.file.string() << "on topic " << pub.getTopic()
+                         << "to " << pub.getNumSubscribers() << "subscribers");
       auto stp = node_->now();
       std_msgs::msg::Header header;
       header.frame_id = frame_id_prfx + frame_id_;
