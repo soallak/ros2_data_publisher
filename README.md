@@ -4,7 +4,7 @@ A ROS2 package for publishing common image dataset
 
 ## Supported Datasets
 
-The following datasets are currently supported: 
+The following datasets are currently supported:
 - EuroC Mav Dataset
 
 ## Usage
@@ -25,5 +25,3 @@ ros2 run data_publisher data_publisher_node  --ros-args -p dataset_path:=<datase
 ### EuRoC MAV Dataset
  - `left/image_raw`
  - `right/image_raw`
-
-
